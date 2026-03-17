@@ -2,7 +2,7 @@
   "name": "我的书架",
   "short_name": "书架",
   "description": "纸质书阅读记录工具",
-  "start_url": "/",
+  "start_url": "/my-bookshelf/",
   "display": "standalone",
   "background_color": "#fdf8f0",
   "theme_color": "#8b4513",
