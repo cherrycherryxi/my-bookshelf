@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="我的书架">
+<meta name="theme-color" content="#fdf8f0">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>我的书架</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --paper: #fdf8f0;
+    --paper2: #f5ede0;
+    --paper3: #ede0cc;
+    --ink: #3a2e22;
+    --ink2: #6b5744;
+    --ink3: #9c8470;
+    --accent: #8b4513;
+    --accent2: #c8722a;
+    --accent-light: #f5e6d3;
+    --border: #d4b896;
+    --border2: #c4a07a;
+    --red: #c0392b;
+    --gold: #b8860b;
+    --radius: 10px;
+    --shadow: 0 2px 12px rgba(100,60,20,0.10);
+    --safe-top: env(safe-area-inset-top);
+    --safe-bottom: env(safe-area-inset-bottom);
+  }
+  body {
+    font-family: 'Georgia', serif;
+    background: var(--paper2);
+    color: var(--ink);
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    padding-bottom: calc(16px + var(--safe-bottom));
+  }
+  .header {
+    background: var(--paper);
+    border-bottom: 2px solid var(--border);
+    padding: calc(14px + var(--safe-top)) 20px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-title { font-size: 20px; font-weight: bold; color: var(--accent); letter-spacing: 2px; }
+  .header-title span { font-size: 13px; color: var(--ink3); margin-left: 8px; font-weight: normal; }
+  .btn-new {
+    background: var(--accent); color: #fff8ee;
+    border: none; border-radius: var(--radius);
+    padding: 8px 18px; font-size: 14px; cursor: pointer;
+    font-family: 'Georgia', serif; letter-spacing: 1px;
+    -webkit-tap-highlight-color: transparent;
+    min-height: 44px;
+  }
+  #view-list, #view-form, #view-detail { display: none; padding: 20px; max-width: 720px; margin: 0 auto; }
+  #view-list.active, #view-form.active, #view-detail.active { display: block; }
+
+  .book-card {
+    background: var(--paper); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px 18px;
+    margin-bottom: 14px; cursor: pointer;
+    display: flex; gap: 14px; align-items: flex-start;
+    box-shadow: var(--shadow);
+    -webkit-tap-highlight-color: transparent;
+  }
+  .book-spine { width: 8px; border-radius: 4px; align-self: stretch; flex-shrink: 0; background: var(--accent); opacity: 0.7; min-height: 60px; }
+  .book-card-body { flex: 1; min-width: 0; }
+  .book-card-title { font-size: 16px; font-weight: bold; color: var(--ink); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .book-card-author { font-size: 13px; color: var(--ink2); margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .book-card-meta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .tag { font-size: 11px; padding: 2px 9px; border-radius: 20px; font-family: sans-serif; font-weight: 500; }
+  .tag-reading { background: #fff3cd; color: #856404; border: 1px solid #ffd96a; }
+  .tag-done { background: #d4edda; color: #155724; border: 1px solid #a3d1b0; }
+  .tag-quotes { background: var(--accent-light); color: var(--accent); border: 1px solid var(--border); }
+  .book-card-date { font-size: 11px; color: var(--ink3); font-family: sans-serif; margin-top: 4px; }
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--ink3); font-size: 15px; line-height: 2; }
+  .empty-state .big { font-size: 40px; margin-bottom: 10px; }
+
+  .form-section { background: var(--paper); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; margin-bottom: 16px; box-shadow: var(--shadow); }
+  .form-section-title { font-size: 12px; font-weight: bold; color: var(--accent); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px dashed var(--border); font-family: sans-serif; }
+  .form-row { margin-bottom: 12px; }
+  .form-row label { display: block; font-size: 12px; color: var(--ink2); margin-bottom: 4px; font-family: sans-serif; }
+  .form-row input, .form-row textarea, .form-row select {
+    width: 100%; padding: 10px 12px;
+    border: 1px solid var(--border); border-radius: 6px;
+    background: var(--paper2); color: var(--ink);
+    font-size: 16px; /* 16px prevents iOS auto-zoom */
+    font-family: 'Georgia', serif; outline: none; resize: vertical;
+    -webkit-appearance: none;
+  }
+  .form-row input:focus, .form-row textarea:focus { border-color: var(--accent2); background: var(--paper); }
+  .form-row textarea { min-height: 80px; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 400px) { .form-grid { grid-template-columns: 1fr; } }
+
+  .input-toolbar { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+  .tool-btn {
+    display: flex; align-items: center; gap: 5px;
+    padding: 8px 14px; border: 1px solid var(--border);
+    border-radius: 20px; background: var(--paper2); color: var(--ink2);
+    font-size: 13px; cursor: pointer; font-family: sans-serif;
+    min-height: 44px; -webkit-tap-highlight-color: transparent;
+  }
+  .tool-btn svg { width: 15px; height: 15px; flex-shrink: 0; }
+  .tool-btn.active { background: var(--accent); color: #fff8ee; border-color: var(--accent); }
+
+  .voice-bar { display: none; align-items: center; gap: 10px; padding: 8px 12px; background: var(--accent-light); border: 1px solid var(--border); border-radius: 8px; margin-top: 8px; font-size: 13px; color: var(--accent); font-family: sans-serif; }
+  .voice-bar.show { display: flex; }
+  .pulse { width: 10px; height: 10px; border-radius: 50%; background: var(--red); animation: pulse 0.8s infinite; flex-shrink: 0; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.8)} }
+
+  .photo-grid { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .photo-item { position: relative; }
+  .photo-thumb { width: 80px; height: 80px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border); }
+  .photo-del { position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; background: var(--red); color: #fff; border-radius: 50%; border: none; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1; }
+  .ocr-result { margin-top: 8px; padding: 10px 12px; background: var(--accent-light); border-left: 3px solid var(--accent2); border-radius: 0 6px 6px 0; font-size: 14px; color: var(--ink2); line-height: 1.6; font-style: italic; }
+  .ocr-result .ocr-label { font-size: 11px; font-style: normal; color: var(--ink3); margin-bottom: 4px; font-family: sans-serif; }
+  .ocr-actions { display: flex; gap: 8px; margin-top: 8px; }
+
+  .btn-sm { padding: 6px 14px; border-radius: 20px; font-size: 13px; border: 1px solid var(--border); background: var(--paper); cursor: pointer; color: var(--ink2); font-family: sans-serif; min-height: 36px; -webkit-tap-highlight-color: transparent; }
+  .btn-sm.primary { background: var(--accent); color: #fff8ee; border-color: var(--accent); }
+
+  .tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+  .tab { padding: 8px 18px; font-size: 14px; border: none; background: transparent; cursor: pointer; color: var(--ink2); border-bottom: 2px solid transparent; margin-bottom: -1px; font-family: sans-serif; min-height: 44px; -webkit-tap-highlight-color: transparent; }
+  .tab.active { color: var(--accent); border-bottom: 2px solid var(--accent); font-weight: bold; }
+
+  .form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 4px; padding-bottom: 20px; }
+  .btn-save { background: var(--accent); color: #fff8ee; border: none; border-radius: var(--radius); padding: 12px 28px; font-size: 16px; cursor: pointer; font-family: 'Georgia', serif; min-height: 48px; -webkit-tap-highlight-color: transparent; }
+  .btn-cancel { background: transparent; color: var(--ink2); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 20px; font-size: 16px; cursor: pointer; font-family: 'Georgia', serif; min-height: 48px; -webkit-tap-highlight-color: transparent; }
+
+  .detail-header { display: flex; align-items: flex-start; gap: 16px; margin-bottom: 20px; }
+  .detail-spine { width: 10px; border-radius: 5px; align-self: stretch; background: var(--accent); flex-shrink: 0; min-height: 80px; }
+  .detail-title { font-size: 22px; font-weight: bold; color: var(--ink); margin-bottom: 4px; line-height: 1.3; }
+  .detail-author { font-size: 14px; color: var(--ink2); margin-bottom: 8px; }
+  .detail-section { background: var(--paper); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 14px; box-shadow: var(--shadow); }
+  .detail-section-title { font-size: 11px; font-family: sans-serif; font-weight: bold; color: var(--ink3); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 10px; }
+  .quote-item { padding: 10px 14px; background: var(--accent-light); border-left: 3px solid var(--accent2); border-radius: 0 6px 6px 0; margin-bottom: 10px; font-size: 14px; line-height: 1.7; font-style: italic; }
+  .quote-img { max-width: 100%; border-radius: 6px; margin-top: 8px; border: 1px solid var(--border); display: block; }
+  .detail-text { font-size: 14px; line-height: 1.8; color: var(--ink); white-space: pre-wrap; }
+  .stars { color: var(--gold); font-size: 20px; letter-spacing: 3px; }
+  .detail-actions { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+  .back-btn { display: flex; align-items: center; gap: 5px; background: transparent; border: 1px solid var(--border); color: var(--ink2); border-radius: 20px; padding: 8px 16px; font-size: 13px; cursor: pointer; font-family: sans-serif; min-height: 40px; -webkit-tap-highlight-color: transparent; }
+
+  .progress-row { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+  .progress-bar-wrap { flex: 1; height: 6px; background: var(--paper3); border-radius: 3px; overflow: hidden; }
+  .progress-bar-fill { height: 100%; background: var(--accent2); border-radius: 3px; }
+  .progress-label { font-size: 12px; color: var(--ink3); font-family: sans-serif; min-width: 36px; text-align: right; }
+
+  .star-rating { display: flex; gap: 6px; margin-top: 4px; }
+  .star-rating span { font-size: 28px; cursor: pointer; color: var(--border); min-width: 44px; text-align: center; -webkit-tap-highlight-color: transparent; }
+  .star-rating span.on { color: var(--gold); }
+
+  .search-bar { position: relative; margin-bottom: 16px; }
+  .search-bar input { width: 100%; padding: 10px 14px 10px 38px; border: 1px solid var(--border); border-radius: 24px; background: var(--paper); color: var(--ink); font-size: 16px; font-family: sans-serif; outline: none; -webkit-appearance: none; }
+  .search-bar svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--ink3); pointer-events: none; }
+
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  #toast { position: fixed; bottom: calc(24px + var(--safe-bottom)); left: 50%; transform: translateX(-50%); background: var(--ink); color: var(--paper); padding: 10px 24px; border-radius: 24px; font-size: 13px; font-family: sans-serif; opacity: 0; pointer-events: none; transition: opacity 0.3s; z-index: 9999; white-space: nowrap; }
+  #toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-title">&#128218; 我的书架<span id="book-count"></span></div>
+  <button class="btn-new" onclick="showForm(null)">+ 新增</button>
+</div>
+
+<!-- LIST -->
+<div id="view-list" class="active">
+  <div class="search-bar">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+    <input type="text" id="search-input" placeholder="搜索书名、作者…" oninput="renderList()">
+  </div>
+  <div id="book-list"></div>
+</div>
+
+<!-- FORM -->
+<div id="view-form">
+  <div style="display:flex;gap:10px;align-items:center;margin-bottom:18px;">
+    <button class="back-btn" onclick="showList()">&#8592; 返回</button>
+    <span id="form-title" style="font-size:15px;color:var(--ink2);font-family:sans-serif;"></span>
+  </div>
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('reading',this)">阅读中</button>
+    <button class="tab" onclick="switchTab('done',this)">读完后</button>
+  </div>
+
+  <!-- 阅读中 -->
+  <div id="tab-reading">
+    <div class="form-section">
+      <div class="form-section-title">&#128196; 书籍信息</div>
+      <div class="form-row"><label>书名 *</label><input id="f-title" placeholder="书名" autocomplete="off"></div>
+      <div class="form-grid">
+        <div class="form-row"><label>作者</label><input id="f-author" placeholder="作者"></div>
+        <div class="form-row"><label>译者</label><input id="f-translator" placeholder="译者（如有）"></div>
+        <div class="form-row"><label>出版社</label><input id="f-publisher" placeholder="出版社"></div>
+        <div class="form-row"><label>出版年份</label><input id="f-year" placeholder="如：2021" type="number" inputmode="numeric"></div>
+      </div>
+      <div class="form-row"><label>ISBN</label><input id="f-isbn" placeholder="ISBN（可选）" inputmode="numeric"></div>
+    </div>
+
+    <div class="form-section">
+      <div class="form-section-title">&#128196; 摘录 &amp; 笔记</div>
+      <div class="input-toolbar">
+        <button class="tool-btn" onclick="triggerCamera()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          拍照摘录
+        </button>
+        <button class="tool-btn" id="voice-btn" onclick="toggleVoice('voice-bar','voice-btn','f-quotes')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+          语音输入
+        </button>
+      </div>
+      <div class="voice-bar" id="voice-bar">
+        <div class="pulse"></div><span>正在聆听…</span>
+        <button class="btn-sm" onclick="stopVoice('voice-bar','voice-btn')">停止</button>
+      </div>
+      <input type="file" id="camera-input" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto(event)">
+      <div id="ocr-area"></div>
+      <div class="form-row" style="margin-top:10px;">
+        <label>文字摘录 / 笔记</label>
+        <textarea id="f-quotes" placeholder="输入摘录，或使用拍照、语音…"></textarea>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <div class="form-section-title">&#128149; 当下感受</div>
+      <div class="input-toolbar">
+        <button class="tool-btn" id="voice-btn2" onclick="toggleVoice('voice-bar2','voice-btn2','f-feeling')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+          语音输入
+        </button>
+      </div>
+      <div class="voice-bar" id="voice-bar2">
+        <div class="pulse"></div><span>正在聆听…</span>
+        <button class="btn-sm" onclick="stopVoice('voice-bar2','voice-btn2')">停止</button>
+      </div>
+      <textarea id="f-feeling" placeholder="此刻读到这里，你想说什么…"></textarea>
+    </div>
+
+    <div class="form-section">
+      <div class="form-section-title">&#128336; 阅读进度</div>
+      <div class="form-grid">
+        <div class="form-row"><label>开始日期</label><input id="f-start" type="date"></div>
+        <div class="form-row"><label>当前页 / 总页数</label>
+          <div style="display:flex;gap:8px;">
+            <input id="f-page-cur" type="number" inputmode="numeric" placeholder="当前" style="width:50%">
+            <input id="f-page-total" type="number" inputmode="numeric" placeholder="总页" style="width:50%">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 读完后 -->
+  <div id="tab-done" style="display:none;">
+    <div class="form-section">
+      <div class="form-section-title">&#128197; 阅读时间</div>
+      <div class="form-grid">
+        <div class="form-row"><label>开始日期</label><input id="f-start2" type="date"></div>
+        <div class="form-row"><label>结束日期</label><input id="f-end" type="date"></div>
+      </div>
+    </div>
+    <div class="form-section">
+      <div class="form-section-title">&#128221; 书籍主要内容</div>
+      <div class="input-toolbar">
+        <button class="tool-btn" id="voice-btn3" onclick="toggleVoice('voice-bar3','voice-btn3','f-summary')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+          语音输入
+        </button>
+      </div>
+      <div class="voice-bar" id="voice-bar3">
+        <div class="pulse"></div><span>正在聆听…</span>
+        <button class="btn-sm" onclick="stopVoice('voice-bar3','voice-btn3')">停止</button>
+      </div>
+      <textarea id="f-summary" placeholder="这本书主要讲了什么…" style="width:100%;"></textarea>
+    </div>
+    <div class="form-section">
+      <div class="form-section-title">&#11088; 我的评价</div>
+      <div class="form-row"><label>评分</label>
+        <div class="star-rating" id="star-rating">
+          <span onclick="setRating(1)">&#9733;</span><span onclick="setRating(2)">&#9733;</span>
+          <span onclick="setRating(3)">&#9733;</span><span onclick="setRating(4)">&#9733;</span>
+          <span onclick="setRating(5)">&#9733;</span>
+        </div>
+      </div>
+      <div class="form-row" style="margin-top:10px;"><label>一句话评价</label>
+        <input id="f-rating-text" placeholder="用一句话概括这本书…">
+      </div>
+    </div>
+    <div class="form-section">
+      <div class="form-section-title">&#128149; 读后感</div>
+      <div class="input-toolbar">
+        <button class="tool-btn" id="voice-btn4" onclick="toggleVoice('voice-bar4','voice-btn4','f-review')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+          语音输入
+        </button>
+      </div>
+      <div class="voice-bar" id="voice-bar4">
+        <div class="pulse"></div><span>正在聆听…</span>
+        <button class="btn-sm" onclick="stopVoice('voice-bar4','voice-btn4')">停止</button>
+      </div>
+      <textarea id="f-review" placeholder="读完这本书，你想说…" style="width:100%;"></textarea>
+    </div>
+  </div>
+
+  <div class="form-actions">
+    <button class="btn-cancel" onclick="showList()">取消</button>
+    <button class="btn-save" onclick="saveBook()">保存记录</button>
+  </div>
+</div>
+
+<!-- DETAIL -->
+<div id="view-detail">
+  <div class="detail-actions">
+    <button class="back-btn" onclick="showList()">&#8592; 返回</button>
+    <button class="btn-sm" onclick="editCurrent()">&#9998; 编辑</button>
+    <button class="btn-sm" style="color:var(--red);border-color:#e8a0a0;" onclick="deleteCurrent()">&#128465; 删除</button>
+  </div>
+  <div id="detail-content"></div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const DB_KEY = 'reading_log_v2';
+let books = [], editId = null, currentRating = 0, photoDataUrls = [], recognition = null, currentDetailId = null;
+
+function loadData() { try { books = JSON.parse(localStorage.getItem(DB_KEY)||'[]'); } catch(e) { books=[]; } }
+function saveData() { localStorage.setItem(DB_KEY, JSON.stringify(books)); }
+function genId() { return Date.now()+Math.random().toString(36).slice(2); }
+
+function showList() {
+  setView('list'); renderList();
+}
+function showForm(id) {
+  editId=id; photoDataUrls=[]; currentRating=0; updateStars(0); clearFields();
+  document.getElementById('form-title').textContent = id?'编辑记录':'新增书籍';
+  if(id){ const b=books.find(x=>x.id===id); if(b) fillForm(b); }
+  document.getElementById('ocr-area').innerHTML='';
+  switchTab('reading', document.querySelector('.tab'));
+  setView('form');
+}
+function showDetail(id) {
+  currentDetailId=id;
+  const b=books.find(x=>x.id===id); if(!b) return;
+  renderDetail(b); setView('detail');
+}
+function setView(v) {
+  ['list','form','detail'].forEach(n=>{
+    document.getElementById('view-'+n).className = n===v?'active':'';
+  });
+  window.scrollTo(0,0);
+}
+
+function switchTab(name, el) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-reading').style.display = name==='reading'?'':'none';
+  document.getElementById('tab-done').style.display = name==='done'?'':'none';
+}
+
+function clearFields() {
+  ['f-title','f-author','f-translator','f-publisher','f-year','f-isbn',
+   'f-quotes','f-feeling','f-start','f-page-cur','f-page-total',
+   'f-start2','f-end','f-summary','f-rating-text','f-review'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+}
+function fillForm(b) {
+  const s=(id,v)=>{const e=document.getElementById(id);if(e)e.value=v||'';};
+  s('f-title',b.title);s('f-author',b.author);s('f-translator',b.translator);
+  s('f-publisher',b.publisher);s('f-year',b.year);s('f-isbn',b.isbn);
+  s('f-quotes',b.quotes);s('f-feeling',b.feeling);
+  s('f-start',b.startDate);s('f-page-cur',b.pageCur);s('f-page-total',b.pageTotal);
+  s('f-start2',b.startDate);s('f-end',b.endDate);
+  s('f-summary',b.summary);s('f-rating-text',b.ratingText);s('f-review',b.review);
+  currentRating=b.rating||0; updateStars(currentRating);
+  photoDataUrls=b.photos?[...b.photos]:[];
+  renderPhotoGrid();
+}
+function g(id){const e=document.getElementById(id);return e?e.value.trim():'';}
+
+function saveBook() {
+  const title=g('f-title'); if(!title){showToast('请至少填写书名');return;}
+  const b={
+    id:editId||genId(), title, author:g('f-author'), translator:g('f-translator'),
+    publisher:g('f-publisher'), year:g('f-year'), isbn:g('f-isbn'),
+    quotes:g('f-quotes'), feeling:g('f-feeling'),
+    startDate:g('f-start')||g('f-start2'), endDate:g('f-end'),
+    pageCur:g('f-page-cur'), pageTotal:g('f-page-total'),
+    summary:g('f-summary'), rating:currentRating,
+    ratingText:g('f-rating-text'), review:g('f-review'),
+    photos:[...photoDataUrls],
+    updatedAt:new Date().toISOString(),
+    createdAt:editId?(books.find(x=>x.id===editId)||{}).createdAt:new Date().toISOString()
+  };
+  if(editId){const i=books.findIndex(x=>x.id===editId);if(i>=0)books[i]=b;else books.unshift(b);}
+  else books.unshift(b);
+  saveData(); showToast('已保存 ✓'); showList();
+}
+
+function deleteCurrent() {
+  if(!confirm('确认删除？')) return;
+  books=books.filter(x=>x.id!==currentDetailId);
+  saveData(); showList();
+}
+function editCurrent(){showForm(currentDetailId);}
+
+function renderList() {
+  const q=(document.getElementById('search-input').value||'').toLowerCase();
+  const f=q?books.filter(b=>(b.title+b.author).toLowerCase().includes(q)):books;
+  document.getElementById('book-count').textContent=`${books.length}本`;
+  const el=document.getElementById('book-list');
+  if(!f.length){
+    el.innerHTML=`<div class="empty-state"><div class="big">📚</div>${q?'没有找到相关书籍':'还没有记录<br>点击右上角新增第一本书'}</div>`;
+    return;
+  }
+  el.innerHTML=f.map(b=>{
+    const done=!!b.endDate;
+    const pct=(b.pageCur&&b.pageTotal)?Math.min(100,Math.round(b.pageCur/b.pageTotal*100)):null;
+    const stars=b.rating?'★'.repeat(b.rating)+'☆'.repeat(5-b.rating):'';
+    return `<div class="book-card" onclick="showDetail('${b.id}')">
+      <div class="book-spine"></div>
+      <div class="book-card-body">
+        <div class="book-card-title">${esc(b.title)}</div>
+        <div class="book-card-author">${[b.author,b.translator?'译：'+b.translator:'',b.publisher].filter(Boolean).join(' · ')||'&nbsp;'}</div>
+        <div class="book-card-meta">
+          <span class="tag ${done?'tag-done':'tag-reading'}">${done?'已读完':'阅读中'}</span>
+          ${b.quotes?`<span class="tag tag-quotes">有摘录</span>`:''}
+          ${stars?`<span style="color:var(--gold);font-size:12px;">${stars}</span>`:''}
+        </div>
+        ${pct!==null?`<div style="margin-top:8px;"><div class="progress-row"><div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${pct}%"></div></div><span class="progress-label">${pct}%</span></div></div>`:''}
+        <div class="book-card-date">${fmtDate(b.updatedAt)}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderDetail(b) {
+  const done=!!b.endDate;
+  const stars=b.rating?'★'.repeat(b.rating)+'☆'.repeat(5-b.rating):'';
+  let h=`<div class="detail-header"><div class="detail-spine"></div><div>
+    <div class="detail-title">${esc(b.title)}</div>
+    <div class="detail-author">${[b.author,b.translator?'译：'+b.translator:'',b.publisher,b.year?b.year+'年':''].filter(Boolean).join(' · ')||'&nbsp;'}</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <span class="tag ${done?'tag-done':'tag-reading'}">${done?'已读完':'阅读中'}</span>
+      ${b.isbn?`<span class="tag tag-quotes">ISBN ${esc(b.isbn)}</span>`:''}
+    </div></div></div>`;
+  if(b.startDate||b.endDate) h+=sec('阅读时间',`<div class="detail-text">${[b.startDate?'开始：'+b.startDate:'',b.endDate?'读完：'+b.endDate:''].filter(Boolean).join('　→　')}</div>`);
+  if(b.pageCur||b.pageTotal){
+    const pct=(b.pageCur&&b.pageTotal)?Math.min(100,Math.round(b.pageCur/b.pageTotal*100)):null;
+    h+=sec('阅读进度',`${pct!==null?`<div class="progress-row"><div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${pct}%"></div></div><span class="progress-label">${pct}%</span></div>`:''}<div style="font-size:13px;color:var(--ink3);font-family:sans-serif;">${b.pageCur||'?'} / ${b.pageTotal||'?'} 页</div>`);
+  }
+  if(b.quotes||(b.photos&&b.photos.length)) h+=sec('摘录 &amp; 笔记',`${(b.photos||[]).map(p=>`<img class="quote-img" src="${p}">`).join('')}${b.quotes?`<div class="quote-item" style="margin-top:${b.photos&&b.photos.length?'10px':'0'}">${esc(b.quotes).replace(/\n/g,'<br>')}</div>`:''}`);
+  if(b.feeling) h+=sec('当下感受',`<div class="detail-text">${esc(b.feeling).replace(/\n/g,'<br>')}</div>`);
+  if(b.summary) h+=sec('书籍主要内容',`<div class="detail-text">${esc(b.summary).replace(/\n/g,'<br>')}</div>`);
+  if(b.rating||b.ratingText) h+=sec('我的评价',`${b.rating?`<div class="stars">${stars}</div>`:''} ${b.ratingText?`<div class="detail-text" style="margin-top:6px;">${esc(b.ratingText)}</div>`:''}`);
+  if(b.review) h+=sec('读后感',`<div class="detail-text">${esc(b.review).replace(/\n/g,'<br>')}</div>`);
+  document.getElementById('detail-content').innerHTML=h;
+}
+function sec(title,body){return `<div class="detail-section"><div class="detail-section-title">${title}</div>${body}</div>`;}
+
+// PHOTO / OCR
+function triggerCamera(){document.getElementById('camera-input').click();}
+function handlePhoto(e){
+  const file=e.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    photoDataUrls.push(ev.target.result);
+    renderPhotoGrid(); runOCR(ev.target.result);
+  };
+  reader.readAsDataURL(file); e.target.value='';
+}
+function renderPhotoGrid(){
+  const area=document.getElementById('ocr-area');
+  const existing=area.querySelector('.photo-grid');
+  const grid=`<div class="photo-grid">${photoDataUrls.map((d,i)=>`<div class="photo-item"><img class="photo-thumb" src="${d}"><button class="photo-del" onclick="removePhoto(${i})">×</button></div>`).join('')}</div>`;
+  if(existing) existing.outerHTML=grid; else area.insertAdjacentHTML('afterbegin',grid);
+  if(!photoDataUrls.length && existing) existing.remove();
+}
+function removePhoto(i){photoDataUrls.splice(i,1);renderPhotoGrid();}
+
+async function runOCR(dataUrl){
+  const area=document.getElementById('ocr-area');
+  const notice=document.createElement('div');
+  notice.className='ocr-result';
+  notice.innerHTML=`<div class="ocr-label">AI 识别中…</div><div><span class="spinner"></span></div>`;
+  area.appendChild(notice);
+  try{
+    const base64=dataUrl.split(',')[1];
+    const resp=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:[
+        {type:'image',source:{type:'base64',media_type:'image/jpeg',data:base64}},
+        {type:'text',text:'请识别图片中的文字内容，只返回识别到的文字，不需要任何解释。如果无法识别，只回复"无法识别文字"。'}
+      ]}]})
+    });
+    const data=await resp.json();
+    const text=(data.content||[]).map(c=>c.text||'').join('').trim();
+    notice.innerHTML=`<div class="ocr-label">识别结果</div><div style="margin-bottom:8px;">${esc(text)}</div>
+      <div class="ocr-actions">
+        <button class="btn-sm primary" onclick="insertOCR(this,'${encodeURIComponent(text)}')">插入摘录</button>
+        <button class="btn-sm" onclick="this.closest('.ocr-result').remove()">忽略</button>
+      </div>`;
+  }catch(err){
+    notice.innerHTML=`<div class="ocr-label" style="color:var(--red);">识别失败，请检查网络</div><button class="btn-sm" onclick="this.closest('.ocr-result').remove()">关闭</button>`;
+  }
+}
+function insertOCR(btn,encoded){
+  const text=decodeURIComponent(encoded);
+  const ta=document.getElementById('f-quotes');
+  ta.value=ta.value?ta.value+'\n\n'+text:text;
+  btn.closest('.ocr-result').remove(); showToast('已插入摘录');
+}
+
+// VOICE
+function toggleVoice(barId,btnId,targetId){
+  const btn=document.getElementById(btnId);
+  if(recognition){stopVoice(barId,btnId);return;}
+  const R=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!R){showToast('此浏览器不支持语音输入');return;}
+  recognition=new R(); recognition.lang='zh-CN'; recognition.continuous=true; recognition.interimResults=true;
+  recognition.onresult=e=>{
+    let final='';
+    for(let i=e.resultIndex;i<e.results.length;i++) if(e.results[i].isFinal) final+=e.results[i][0].transcript;
+    if(final){const ta=document.getElementById(targetId);if(ta)ta.value+=final;}
+  };
+  recognition.onend=()=>{document.getElementById(barId).classList.remove('show');if(btn)btn.classList.remove('active');recognition=null;};
+  recognition.start();
+  document.getElementById(barId).classList.add('show'); btn&&btn.classList.add('active');
+}
+function stopVoice(barId,btnId){
+  if(recognition)recognition.stop();
+  document.getElementById(barId).classList.remove('show');
+  const btn=document.getElementById(btnId); if(btn)btn.classList.remove('active');
+}
+
+// STARS
+function setRating(n){currentRating=n;updateStars(n);}
+function updateStars(n){document.querySelectorAll('#star-rating span').forEach((s,i)=>s.classList.toggle('on',i<n));}
+
+// UTILS
+function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function fmtDate(iso){if(!iso)return'';const d=new Date(iso);return`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;}
+let toastTimer;
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),2200);}
+
+loadData(); renderList();
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js');
+  });
+}
+</script>
+</body>
+</html>
