@@ -501,7 +501,7 @@ async function runOCR(dataUrl){
   try{
     const base64=dataUrl.split(',')[1];
     const resp=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',headers:{'Content-Type':'application/json'},
+      method:'POST',headers:{'Content-Type':'application/json', 'anthropic-dangerous-direct-browser-access':'true'},
       body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:[
         {type:'image',source:{type:'base64',media_type:'image/jpeg',data:base64}},
         {type:'text',text:'请识别图片中的文字内容，只返回识别到的文字，不需要任何解释。如果无法识别，只回复"无法识别文字"。'}
@@ -561,7 +561,7 @@ loadData(); renderList();
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js');
+    navigator.serviceWorker.register('/my-bookshelf/sw.js');
   });
 }
 </script>
